@@ -56,12 +56,33 @@ export class UIManager {
 
         members.forEach(member => {
             const memberDiv = this.createDiv('member');
-            memberDiv.textContent = member.name;
-            memberDiv.dataset.id = member.id;
+            const memberHeader = this.createDiv('member-header');
 
-            // Add drop listener for tasks
-            memberDiv.addEventListener('drop', e => this.handleDropTask(e, member.id));
-            memberDiv.addEventListener('dragover', e => e.preventDefault());
+            // Member name and delete button
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = member.name;
+            nameSpan.style.fontWeight = 'bold';
+
+            const deleteButton = document.createElement('button');
+            deleteButton.textContent = '❌';
+            deleteButton.style.marginLeft = '10px';
+            deleteButton.addEventListener('click', () => {
+                this.teamMemberManager.removeTeamMember(member.id);
+                this.renderTeamMembers(container);
+            });
+
+            memberHeader.appendChild(nameSpan);
+            memberHeader.appendChild(deleteButton);
+
+            // Task counts
+            const incompleteCount = member.tasks.filter(task => !task.isCompleted).length;
+            const completeCount = member.tasks.filter(task => task.isCompleted).length;
+
+            const taskCountDiv = this.createDiv('task-count');
+            taskCountDiv.innerHTML = `
+                <div>Incomplete Tasks: ${incompleteCount}</div>
+                <div>Completed Tasks: ${completeCount}</div>
+            `;
 
             // Separate task lists
             const incompleteList = this.createTaskList(member, false);
@@ -71,72 +92,16 @@ export class UIManager {
             this.addDragToResizeList(incompleteList);
             this.addDragToResizeList(completeList);
 
+            // Append elements
+            memberDiv.appendChild(memberHeader);
+            memberDiv.appendChild(taskCountDiv);
             memberDiv.appendChild(incompleteList);
             memberDiv.appendChild(completeList);
-
-            // Add delete button for the member
-            const deleteButton = document.createElement('button');
-            deleteButton.textContent = '❌';
-            deleteButton.addEventListener('click', () => {
-                this.teamMemberManager.removeTeamMember(member.id);
-                this.renderTeamMembers(container);
-            });
-
-            memberDiv.appendChild(deleteButton);
             membersContainer.appendChild(memberDiv);
-        });
-    }
 
-    private renderTasks(container: HTMLElement): void {
-        let tasksContainer = container.querySelector('.tasks-container') as HTMLElement;
-        let buttonContainer = container.querySelector('.button-container') as HTMLElement;
-    
-        if (!tasksContainer) {
-            tasksContainer = this.createDiv('tasks-container');
-            container.appendChild(tasksContainer);
-        }
-    
-        if (!buttonContainer) {
-            buttonContainer = this.createDiv('button-container');
-            this.addAddTaskButton(buttonContainer);
-            container.appendChild(buttonContainer);
-        }
-    
-        tasksContainer.innerHTML = ''; // Clear previous tasks
-    
-        const tasks = this.taskManager.getTasks()
-            .sort((a, b) => a.title.localeCompare(b.title)); // Sort tasks alphabetically
-    
-        tasks.forEach(task => {
-            const taskDiv = this.createDiv('task');
-            taskDiv.textContent = task.title;
-            taskDiv.draggable = true;
-            taskDiv.dataset.id = task.id;
-    
-            // Add dragstart listener
-            taskDiv.addEventListener('dragstart', e => this.handleDragStartTask(e, task.id));
-    
-            // Add delete button
-            const deleteButton = document.createElement('button');
-            deleteButton.textContent = '❌';
-            deleteButton.addEventListener('click', () => {
-                this.taskManager.deleteTask(task.id);
-                this.renderTasks(container); // Refresh the task list
-            });
-    
-            // Add duplicate button
-            const duplicateButton = document.createElement('button');
-            duplicateButton.textContent = '🔁'; // Icon or text for duplication
-            duplicateButton.addEventListener('click', () => {
-                const duplicatedTask = this.taskManager.addTask(`${task.title} (Copy)`); // Duplicate the task
-                this.renderTasks(container); // Refresh the task list
-            });
-    
-            // Append buttons
-            taskDiv.appendChild(duplicateButton);
-            taskDiv.appendChild(deleteButton);
-    
-            tasksContainer.appendChild(taskDiv);
+            // Drop functionality for tasks
+            memberDiv.addEventListener('drop', e => this.handleDropTask(e, member.id));
+            memberDiv.addEventListener('dragover', e => e.preventDefault());
         });
     }
 
@@ -198,6 +163,9 @@ export class UIManager {
             toggleButton.textContent = isCompleted ? '⬅️' : '✔️';
             toggleButton.addEventListener('click', () => {
                 task.isCompleted = !task.isCompleted;
+                if (!task.isCompleted) {
+                    task.progress = 0; // Reset progress when marked incomplete
+                }
                 this.renderTeamMembers(document.querySelector('.left-panel')!);
             });
 
@@ -214,6 +182,58 @@ export class UIManager {
         });
 
         return taskList;
+    }
+
+    private renderTasks(container: HTMLElement): void {
+        let tasksContainer = container.querySelector('.tasks-container') as HTMLElement;
+        let buttonContainer = container.querySelector('.button-container') as HTMLElement;
+
+        if (!tasksContainer) {
+            tasksContainer = this.createDiv('tasks-container');
+            container.appendChild(tasksContainer);
+        }
+
+        if (!buttonContainer) {
+            buttonContainer = this.createDiv('button-container');
+            this.addAddTaskButton(buttonContainer);
+            container.appendChild(buttonContainer);
+        }
+
+        tasksContainer.innerHTML = ''; // Clear previous tasks
+
+        const tasks = this.taskManager.getTasks()
+            .sort((a, b) => a.title.localeCompare(b.title)); // Sort tasks alphabetically
+
+        tasks.forEach(task => {
+            const taskDiv = this.createDiv('task');
+            taskDiv.textContent = task.title;
+            taskDiv.draggable = true;
+            taskDiv.dataset.id = task.id;
+
+            // Add dragstart listener
+            taskDiv.addEventListener('dragstart', e => this.handleDragStartTask(e, task.id));
+
+            // Add delete button
+            const deleteButton = document.createElement('button');
+            deleteButton.textContent = '❌';
+            deleteButton.addEventListener('click', () => {
+                this.taskManager.deleteTask(task.id);
+                this.renderTasks(container); // Refresh the task list
+            });
+
+            // Add duplicate button
+            const duplicateButton = document.createElement('button');
+            duplicateButton.textContent = '🔁';
+            duplicateButton.addEventListener('click', () => {
+                this.taskManager.addTask(`${task.title} (Copy)`); // Duplicate the task
+                this.renderTasks(container); // Refresh the task list
+            });
+
+            // Append buttons
+            taskDiv.appendChild(duplicateButton);
+            taskDiv.appendChild(deleteButton);
+            tasksContainer.appendChild(taskDiv);
+        });
     }
 
     private addDragToResize(leftPanel: HTMLElement, rightPanel: HTMLElement, divider: HTMLElement): void {
@@ -278,7 +298,7 @@ export class UIManager {
             const task = this.taskManager.getTasks().find(t => t.id === taskId);
             if (task) {
                 this.teamMemberManager.assignTaskToMember(memberId, task);
-                this.taskManager.deleteTask(task.id);
+                this.taskManager.deleteTask(task.id); // Remove task from unassigned list
                 this.renderTasks(document.querySelector('.right-panel')!);
                 this.renderTeamMembers(document.querySelector('.left-panel')!);
             }
