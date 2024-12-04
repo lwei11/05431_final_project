@@ -12,8 +12,9 @@ export class TeamMemberManager {
     }
     assignTaskToMember(memberId, task) {
         const member = this.teamMembers.find(m => m.id === memberId);
-        if (member)
+        if (member) {
             member.tasks.push(task);
+        }
     }
     removeTaskFromMember(memberId, taskId) {
         const member = this.teamMembers.find(m => m.id === memberId);

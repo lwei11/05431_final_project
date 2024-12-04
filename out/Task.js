@@ -3,7 +3,7 @@ export class TaskManager {
         this.tasks = [];
     }
     addTask(title) {
-        const newTask = { id: crypto.randomUUID(), title, isCompleted: false };
+        const newTask = { id: crypto.randomUUID(), title, isCompleted: false, progress: 0 };
         this.tasks.push(newTask);
         return newTask;
     }
