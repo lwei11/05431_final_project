@@ -109,21 +109,21 @@ export class UIManager {
         const taskList = this.createDiv('task-list');
         taskList.style.overflowY = 'auto';
         taskList.style.maxHeight = '150px';
-        taskList.style.border = '1px solid #000';
+        taskList.style.border = '1px solid #ddd';
         taskList.style.marginTop = '10px';
-
+    
         const header = this.createDiv('list-header');
         header.textContent = isCompleted ? 'Completed Tasks' : 'Incomplete Tasks';
         taskList.appendChild(header);
-
+    
         const sortedTasks: Task[] = member.tasks
             .filter((task: Task) => task.isCompleted === isCompleted)
             .sort((a: Task, b: Task) => a.title.localeCompare(b.title));
-
+    
         sortedTasks.forEach((task: Task) => {
             const taskDiv = this.createDiv('task');
             taskDiv.textContent = task.title;
-
+    
             if (isCompleted) {
                 taskDiv.style.textDecoration = 'line-through';
             } else {
@@ -135,32 +135,35 @@ export class UIManager {
                 slider.max = '100';
                 slider.value = task.progress ? task.progress.toString() : '0';
                 slider.style.width = '80%';
-
+    
                 const sliderValue = document.createElement('span');
                 sliderValue.textContent = `${slider.value}%`;
-
+    
                 slider.addEventListener('input', () => {
                     sliderValue.textContent = `${slider.value}%`;
                 });
-
+    
                 slider.addEventListener('change', () => {
                     const progress = parseInt(slider.value, 10);
                     task.progress = progress;
-
+    
                     if (progress === 100) {
                         task.isCompleted = true;
                         this.renderTeamMembers(document.querySelector('.left-panel')!);
                     }
                 });
-
+    
                 sliderContainer.appendChild(slider);
                 sliderContainer.appendChild(sliderValue);
                 taskDiv.appendChild(sliderContainer);
             }
-
-            // Add toggle button for completeness
+    
+            // Create a container for the task buttons
+            const taskButtons = this.createDiv('task-buttons');
+    
+            // Complete Button
             const toggleButton = document.createElement('button');
-            toggleButton.textContent = isCompleted ? '⬅️' : '✔️';
+            toggleButton.textContent = isCompleted ? '⬅️' : '✅';
             toggleButton.addEventListener('click', () => {
                 task.isCompleted = !task.isCompleted;
                 if (!task.isCompleted) {
@@ -168,21 +171,38 @@ export class UIManager {
                 }
                 this.renderTeamMembers(document.querySelector('.left-panel')!);
             });
-
+            taskButtons.appendChild(toggleButton);
+    
+            // Delete Button
             const deleteButton = document.createElement('button');
             deleteButton.textContent = '❌';
             deleteButton.addEventListener('click', () => {
                 this.teamMemberManager.removeTaskFromMember(member.id, task.id);
                 this.renderTeamMembers(document.querySelector('.left-panel')!);
             });
-
-            taskDiv.appendChild(toggleButton);
-            taskDiv.appendChild(deleteButton);
+            taskButtons.appendChild(deleteButton);
+    
+            // Duplicate Button (only for incomplete tasks)
+            if (!isCompleted) {
+                const duplicateButton = document.createElement('button');
+                duplicateButton.textContent = '🔁';
+                duplicateButton.addEventListener('click', () => {
+                    const newTask = { ...task, id: crypto.randomUUID(), title: `${task.title} (Copy)` };
+                    member.tasks.push(newTask); // Add duplicate to the same member
+                    this.renderTeamMembers(document.querySelector('.left-panel')!);
+                });
+                taskButtons.appendChild(duplicateButton);
+            }
+    
+            // Append the buttons container to the task div
+            taskDiv.appendChild(taskButtons);
+    
+            // Append the task to the task list
             taskList.appendChild(taskDiv);
         });
-
+    
         return taskList;
-    }
+    }    
 
     private renderTasks(container: HTMLElement): void {
         let tasksContainer = container.querySelector('.tasks-container') as HTMLElement;
